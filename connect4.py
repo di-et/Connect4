@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
+
 def clear_screen() -> None:
     # Cross-platform-ish terminal clear (simple)
     print("\n" * 50)
@@ -12,6 +13,7 @@ class Player:
     name: str
     game_piece: str
     wins: int = 0
+    is_ai: bool = False
 
     def print_won(self) -> None:
         print(f"Player: {self.name} won!")
@@ -112,6 +114,82 @@ class Board:
 
         return None
 
+    def copy(self)-> 'Board':
+        new_board= Board(self.row, self.column)
+        new_board.board = [row[:] for row in self.board]
+        return new_board
+
+    def get_valid_columns(self)-> List[int]:
+        return [c for c in range(self.column) if self.board[0][c] == "-"]
+
+class Connect4Agent:
+    def __init__(self, max_token: str, min_token: str, depth: int = 5):
+        self.max_token = max_token
+        self.min_token = min_token
+        self.depth = depth
+
+    def evaluate(self, board:Board)-> int:
+        winner = board.check_win_token()
+        if winner == self.max_token:
+            return 10000
+        if winner == self.min_token:
+            return -10000
+        return 0
+
+    def min_value(self, board:Board, depth:int, alpha: int, beta:int) -> int:
+        winner = board.check_win_token()
+        if depth == 0 or winner is not None or board.check_draw():
+            return self.evaluate(board)
+
+        v = float("inf")
+        for col in board.get_valid_columns():
+            child = board.copy()
+            child.drop_piece(col,self.min_token)
+
+            v = min(v, self.max_value(child, depth - 1, alpha, beta))
+
+            if v <= alpha:
+                return v
+
+            beta = min(beta, v)
+
+        return v
+
+    def max_value(self,board:Board, depth: int, alpha: int, beta: int) -> int:
+        winner = board.check_win_token()
+        if depth == 0 or winner is not None or board.check_draw():
+            return self.evaluate(board)
+
+        v = -float("inf")
+        for col in board.get_valid_columns():
+            child = board.copy()
+            child.drop_piece(col, self.max_token)
+
+            v = max(v, self.min_value(child, depth - 1, alpha, beta))
+
+            if v >= beta:
+                return v
+
+            alpha = max(alpha, v)
+
+        return v
+
+    def choose_next_move(self, board:Board) -> int:
+        best_value = -float("inf")
+        best_col = None
+
+        for col in board.get_valid_columns():
+            child = board.copy()
+            child.drop_piece(col, self.max_token)
+
+            val = self.min_value(child, self.depth - 1, -float("inf"), float("inf"))
+
+            if val > best_value:
+                best_value = val
+                best_col = col
+
+        return best_col
+
 
 class State:
     def new_match(self, player1: Player, player2: Player) -> None:
@@ -169,30 +247,42 @@ def connect_4(option: int, player1: Player, player2: Player) -> None:
 
         # Get valid input
         while True:
+            current = player1 if (swap_counter % 2 == 0) else player2
+            opponent = player2 if current is player1 else player1
+
+            # ---------- AI TURN ----------
+            if current.is_ai:
+                agent = Connect4Agent(
+                    max_token=current.game_piece,
+                    min_token=opponent.game_piece,
+                    depth=5
+                )
+
+                col = agent.choose_next_move(board)
+                board.drop_piece(col, current.game_piece)
+                break
+
+            # ---------- HUMAN TURN ----------
             print(f"{current.name}'s turn.")
             s = input("Enter a valid column number, or type 'resign' to resign: ").strip()
 
             if s.lower() == "resign":
                 print(f"{current.name} resigned")
-                other = player2 if current is player1 else player1
-                other.wins += 1
-                other.print_wins()
-                quit_game = True
-                break
+                opponent.wins += 1
+                opponent.print_wins()
+                return
 
             if not s.isdigit():
-                print("Invalid Input. Please try again.\n")
+                print("Invalid input.")
                 continue
 
             col = int(s)
             if col < 1 or col > board.column:
-                print("Invalid number. Please enter a column in range.\n")
+                print("Invalid column number.")
                 continue
 
-            # Try to place
-            placed = board.drop_piece(col - 1, current.game_piece)
-            if not placed:
-                print("That column is full. Pick another.\n")
+            if not board.drop_piece(col - 1, current.game_piece):
+                print("That column is full.")
                 continue
 
             break
@@ -225,9 +315,10 @@ def connect_4(option: int, player1: Player, player2: Player) -> None:
         print(f"There are {tokens_left} tokens left")
 
 
+
 def main() -> None:
-    player1 = Player(name="Player 1", game_piece="")
-    player2 = Player(name="Player 2", game_piece="")
+    player1 = Player("Human", "X", is_ai=True)
+    player2 = Player("Computer", "O", is_ai=True)
     game_state = State()
 
     cursor = central_menu()
