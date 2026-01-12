@@ -1,366 +1,82 @@
 # connect4.py
-
-from dataclasses import dataclass
-from typing import List, Optional
+from constants import ROWS, COLS, EMPTY
 
 
-def clear_screen() -> None:
-    # Cross-platform-ish terminal clear (simple)
-    print("\n" * 50)
-
-@dataclass
 class Player:
-    name: str
-    game_piece: str
-    wins: int = 0
-    is_ai: bool = False
-
-    def print_won(self) -> None:
-        print(f"Player: {self.name} won!")
-
-    def print_wins(self) -> None:
-        print(f"Player: {self.name} has {self.wins} wins")
-
-    def get_name(self) -> None:
-        # Matches your logic: prompt while length > 20
-        while True:
-            entered = input(f"{self.name} enter name: ").strip()
-            if len(entered) == 0:
-                # keep simple: don't allow empty
-                print("Invalid name: cannot be empty.")
-                continue
-            if len(entered) > 20:
-                print("Invalid name: Please enter name with 20 characters or less.")
-                continue
-            self.name = entered
-            return
-
-    def get_game_piece(self) -> None:
-        while True:
-            entered = input(f"Player **{self.name}** enter game piece: ").strip()
-            if len(entered) != 1:
-                print(f"Invalid game piece: **{self.name}** Please enter 1 keyboard character for game piece.")
-                continue
-            self.game_piece = entered
-            return
+    def __init__(self, name: str, game_piece: str):
+        self.name = name
+        self.game_piece = game_piece
 
 
 class Board:
-    def __init__(self, rows: int = 6, cols: int = 7) -> None:
-        self.row = rows
-        self.column = cols
-        self.board: List[List[str]] = [["-" for _ in range(cols)] for _ in range(rows)]
+    def __init__(self):
+        self.grid = [[EMPTY for _ in range(COLS)] for _ in range(ROWS)]
 
-    def reset(self) -> None:
-        for r in range(self.row):
-            for c in range(self.column):
-                self.board[r][c] = "-"
-
-    def print_board(self) -> None:
-        for r in range(self.row):
-            print(" ".join(f" {self.board[r][c]} " for c in range(self.column)))
-        # Column labels
-        labels = " ".join(f" {i} " for i in range(1, self.column + 1))
-        print(labels + " : Column")
-
-    def check_draw(self) -> bool:
-        # If top row has no "-" -> draw
-        return all(self.board[0][c] != "-" for c in range(self.column))
-
-    def drop_piece(self, col_index_0_based: int, token: str) -> bool:
-        """Returns True if placed, False if column is full."""
-        if self.board[0][col_index_0_based] != "-":
+    def drop_piece(self, col: int, piece: str) -> bool:
+        if col < 0 or col >= COLS:
             return False
 
-        # Place from bottom up
-        for r in range(self.row - 1, -1, -1):
-            if self.board[r][col_index_0_based] == "-":
-                self.board[r][col_index_0_based] = token
+        for row in reversed(range(ROWS)):
+            if self.grid[row][col] == EMPTY:
+                self.grid[row][col] = piece
                 return True
-        return False  # shouldn't happen due to top check
+        return False
 
-    def check_win_token(self) -> Optional[str]:
-        """Return the winning token if there is a win, else None."""
-        b = self.board
-        R, C = self.row, self.column
+    def is_full(self) -> bool:
+        return all(self.grid[0][col] != EMPTY for col in range(COLS))
 
+    def check_win(self, piece: str) -> bool:
         # Horizontal
-        for r in range(R):
-            for c in range(C - 3):
-                t = b[r][c]
-                if t != "-" and t == b[r][c+1] == b[r][c+2] == b[r][c+3]:
-                    return t
+        for row in range(ROWS):
+            for col in range(COLS - 3):
+                if all(self.grid[row][col + i] == piece for i in range(4)):
+                    return True
 
         # Vertical
-        for c in range(C):
-            for r in range(R - 3):
-                t = b[r][c]
-                if t != "-" and t == b[r+1][c] == b[r+2][c] == b[r+3][c]:
-                    return t
+        for col in range(COLS):
+            for row in range(ROWS - 3):
+                if all(self.grid[row + i][col] == piece for i in range(4)):
+                    return True
 
-        # Diagonal top-left -> bottom-right
-        for r in range(R - 3):
-            for c in range(C - 3):
-                t = b[r][c]
-                if t != "-" and t == b[r+1][c+1] == b[r+2][c+2] == b[r+3][c+3]:
-                    return t
+        # Diagonal /
+        for row in range(3, ROWS):
+            for col in range(COLS - 3):
+                if all(self.grid[row - i][col + i] == piece for i in range(4)):
+                    return True
 
-        # Diagonal bottom-left -> top-right
-        for r in range(3, R):
-            for c in range(C - 3):
-                t = b[r][c]
-                if t != "-" and t == b[r-1][c+1] == b[r-2][c+2] == b[r-3][c+3]:
-                    return t
+        # Diagonal \
+        for row in range(ROWS - 3):
+            for col in range(COLS - 3):
+                if all(self.grid[row + i][col + i] == piece for i in range(4)):
+                    return True
 
-        return None
-
-    def copy(self)-> 'Board':
-        new_board= Board(self.row, self.column)
-        new_board.board = [row[:] for row in self.board]
-        return new_board
-
-    def get_valid_columns(self)-> List[int]:
-        return [c for c in range(self.column) if self.board[0][c] == "-"]
-
-class Connect4Agent:
-    def __init__(self, max_token: str, min_token: str, depth: int = 5):
-        self.max_token = max_token
-        self.min_token = min_token
-        self.depth = depth
-
-    def evaluate(self, board:Board)-> int:
-        winner = board.check_win_token()
-        if winner == self.max_token:
-            return 10000
-        if winner == self.min_token:
-            return -10000
-        return 0
-
-    def min_value(self, board:Board, depth:int, alpha: int, beta:int) -> int:
-        winner = board.check_win_token()
-        if depth == 0 or winner is not None or board.check_draw():
-            return self.evaluate(board)
-
-        v = float("inf")
-        for col in board.get_valid_columns():
-            child = board.copy()
-            child.drop_piece(col,self.min_token)
-
-            v = min(v, self.max_value(child, depth - 1, alpha, beta))
-
-            if v <= alpha:
-                return v
-
-            beta = min(beta, v)
-
-        return v
-
-    def max_value(self,board:Board, depth: int, alpha: int, beta: int) -> int:
-        winner = board.check_win_token()
-        if depth == 0 or winner is not None or board.check_draw():
-            return self.evaluate(board)
-
-        v = -float("inf")
-        for col in board.get_valid_columns():
-            child = board.copy()
-            child.drop_piece(col, self.max_token)
-
-            v = max(v, self.min_value(child, depth - 1, alpha, beta))
-
-            if v >= beta:
-                return v
-
-            alpha = max(alpha, v)
-
-        return v
-
-    def choose_next_move(self, board:Board) -> int:
-        best_value = -float("inf")
-        best_col = None
-
-        for col in board.get_valid_columns():
-            child = board.copy()
-            child.drop_piece(col, self.max_token)
-
-            val = self.min_value(child, self.depth - 1, -float("inf"), float("inf"))
-
-            if val > best_value:
-                best_value = val
-                best_col = col
-
-        return best_col
+        return False
 
 
-class State:
-    def new_match(self, player1: Player, player2: Player) -> None:
-        player1.name = "Player 1"
-        player2.name = "Player 2"
-        player1.game_piece = ""
-        player2.game_piece = ""
-        player1.wins = 0
-        player2.wins = 0
+class Connect4Game:
+    def __init__(self, player1: Player, player2: Player):
+        self.board = Board()
+        self.players = [player1, player2]
+        self.current_player_index = 0
+        self.winner = None
+        self.is_draw = False
 
+    @property
+    def current_player(self) -> Player:
+        return self.players[self.current_player_index]
 
-def central_menu() -> int:
-    clear_screen()
-    print("XOXOXOXOXOXOXOOXOXO")
-    print("O                 X")
-    print("X     Connect 4   O")
-    print("O                 X")
-    print("XOXOXOXOXOXOXOOXOXO\n")
-    while True:
-        selection = input("Welcome to connect 4. Type 1 to start a game, or type 2 to quit the program: ").strip()
-        if selection in ("1", "2"):
-            return int(selection)
-        print("please type either 1 or 2")
+    def make_move(self, col: int) -> bool:
+        if self.winner or self.is_draw:
+            return False
 
+        if not self.board.drop_piece(col, self.current_player.game_piece):
+            return False
 
-def connect_4(option: int, player1: Player, player2: Player) -> None:
-    """
-    option == 2: ask for names + tokens
-    option == 1: rematch (keep names + tokens)
-    """
-    board = Board(rows=6, cols=7)
+        if self.board.check_win(self.current_player.game_piece):
+            self.winner = self.current_player
+        elif self.board.is_full():
+            self.is_draw = True
+        else:
+            self.current_player_index = 1 - self.current_player_index
 
-    if option == 2:
-        player1.get_name()
-        player2.get_name()
-        while player2.name == player1.name:
-            print("\nError: Same name as player 1")
-            player2.name = "Player 2"
-            player2.get_name()
-
-        player1.get_game_piece()
-        player2.get_game_piece()
-        while player2.game_piece == player1.game_piece:
-            print("\nERROR: Same game piece as player 1")
-            player2.get_game_piece()
-
-    clear_screen()
-    board.print_board()
-
-    swap_counter = 0  # counts placed tokens
-    quit_game = False
-
-    while swap_counter < board.row * board.column:
-        current = player1 if (swap_counter % 2 == 0) else player2
-
-        # Get valid input
-        while True:
-            current = player1 if (swap_counter % 2 == 0) else player2
-            opponent = player2 if current is player1 else player1
-
-            # ---------- AI TURN ----------
-            if current.is_ai:
-                agent = Connect4Agent(
-                    max_token=current.game_piece,
-                    min_token=opponent.game_piece,
-                    depth=5
-                )
-
-                col = agent.choose_next_move(board)
-                board.drop_piece(col, current.game_piece)
-                break
-
-            # ---------- HUMAN TURN ----------
-            print(f"{current.name}'s turn.")
-            s = input("Enter a valid column number, or type 'resign' to resign: ").strip()
-
-            if s.lower() == "resign":
-                print(f"{current.name} resigned")
-                opponent.wins += 1
-                opponent.print_wins()
-                return
-
-            if not s.isdigit():
-                print("Invalid input.")
-                continue
-
-            col = int(s)
-            if col < 1 or col > board.column:
-                print("Invalid column number.")
-                continue
-
-            if not board.drop_piece(col - 1, current.game_piece):
-                print("That column is full.")
-                continue
-
-            break
-
-        if quit_game:
-            return
-
-        clear_screen()
-        board.print_board()
-
-        winner_token = board.check_win_token()
-        if winner_token is not None:
-            if winner_token == player1.game_piece:
-                player1.print_won()
-                player1.wins += 1
-                player1.print_wins()
-            else:
-                player2.print_won()
-                player2.wins += 1
-                player2.print_wins()
-            print("Win detected")
-            return
-
-        if board.check_draw():
-            print("Draw detected")
-            return
-
-        swap_counter += 1
-        tokens_left = (board.row * board.column) - swap_counter
-        print(f"There are {tokens_left} tokens left")
-
-
-
-def main() -> None:
-    player1 = Player("Human", "X", is_ai=True)
-    player2 = Player("Computer", "O", is_ai=True)
-    game_state = State()
-
-    cursor = central_menu()
-    if cursor == 2:
-        print("Quitting Connect 4")
-        return
-
-    connect_4(option=2, player1=player1, player2=player2)
-
-    while True:
-        choice = input(
-            "Type 1 for Rematch, Type 2 for New Match, Type 3 to go the main menu, Type 4 to End Program: "
-        ).strip()
-
-        if choice not in ("1", "2", "3", "4"):
-            print("Invalid Input. Try again.")
-            continue
-
-        option = int(choice)
-
-        if option == 1:
-            print("Rematch!")
-            connect_4(option=1, player1=player1, player2=player2)
-
-        elif option == 2:
-            print("New Match!")
-            game_state.new_match(player1, player2)
-            connect_4(option=2, player1=player1, player2=player2)
-
-        elif option == 3:
-            cursor = central_menu()
-            if cursor == 1:
-                game_state.new_match(player1, player2)
-                connect_4(option=2, player1=player1, player2=player2)
-            else:
-                print("Quitting Connect 4. Thanks for Playing!")
-                return
-
-        elif option == 4:
-            print("Quitting Connect 4. Thanks for Playing!")
-            return
-
-
-if __name__ == "__main__":
-    main()
+        return True
