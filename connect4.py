@@ -1,6 +1,6 @@
 # connect4.py
-from constrants import ROWS, COLS, EMPTY
 from aiWrapper import get_ai_move
+from constrants import COLS, EMPTY, ROWS
 
 
 class Player:
@@ -80,8 +80,8 @@ class Connect4Game:
         else:
             self.current_player_index = 1 - self.current_player_index
         return True
-    
+
     def get_ai_move(self) -> int:
         ai_piece = self.players[1].game_piece
         human_piece = self.players[0].game_piece
-        return get_ai_move(self.board.grid, ai_piece, human_piece, depth = 4)
+        return get_ai_move(self.board.grid, ai_piece, human_piece, depth=4)

@@ -1,12 +1,11 @@
 # gui.py
-import pygame
 import sys
 
+import pygame
+
+from connect4 import Connect4Game, Player
 from constrants import *
-from connect4 import Player, Connect4Game
 from drawing import draw_board
-
-
 
 
 def main():
@@ -33,7 +32,7 @@ def main():
                 sys.exit()
 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                #user move
+                # user move
                 if game.winner or game.is_draw:
                     continue
                 if game.current_player.game_piece != PLAYER_1_PIECE:
@@ -58,7 +57,9 @@ def main():
         # Hover preview
         x, _ = pygame.mouse.get_pos()
         # pygame.draw.rect(screen, BLACK, (0, 0, WIDTH, CELL_SIZE))
-        preview_color = RED if game.current_player.game_piece == PLAYER_1_PIECE else YELLOW
+        preview_color = (
+            RED if game.current_player.game_piece == PLAYER_1_PIECE else YELLOW
+        )
         pygame.draw.circle(
             screen,
             preview_color,
@@ -80,3 +81,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -1,6 +1,20 @@
 # drawing.py
 import pygame
-from constrants import ROWS, COLS, CELL_SIZE, SIDE_PANEL_WIDTH, RADIUS, PLAYER_1_PIECE, PLAYER_2_PIECE, WHITE, YELLOW, RED, BLACK, BLUE
+
+from constrants import (
+    BLACK,
+    BLUE,
+    CELL_SIZE,
+    COLS,
+    PLAYER_1_PIECE,
+    PLAYER_2_PIECE,
+    RADIUS,
+    RED,
+    ROWS,
+    SIDE_PANEL_WIDTH,
+    WHITE,
+    YELLOW,
+)
 
 
 def draw_board(screen, game):
@@ -17,10 +31,20 @@ def draw_board(screen, game):
                 (
                     col * CELL_SIZE + CELL_SIZE // 2,
                     (row + 1) * CELL_SIZE + CELL_SIZE // 2,
-                ),RADIUS,
+                ),
+                RADIUS,
             )
             # White bold border
-            pygame.draw.circle(screen, WHITE,(col * CELL_SIZE + CELL_SIZE // 2, (row + 1) * CELL_SIZE + CELL_SIZE // 2), RADIUS, 5) 
+            pygame.draw.circle(
+                screen,
+                WHITE,
+                (
+                    col * CELL_SIZE + CELL_SIZE // 2,
+                    (row + 1) * CELL_SIZE + CELL_SIZE // 2,
+                ),
+                RADIUS,
+                5,
+            )
 
     for row in range(ROWS):
         for col in range(COLS):
@@ -41,3 +65,4 @@ def draw_board(screen, game):
                 ),
                 RADIUS - 4,
             )
+
