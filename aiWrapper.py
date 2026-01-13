@@ -178,7 +178,8 @@ class Connect4Agent:
 
         return score
 
-    def max_value(self, grid, depth, alpha, beta):
+    def value(self, grid, depth, alpha, beta, maximizing: bool) -> int:
+        """Return the value of the state, based on whose turn it is."""
         winner = check_win_token(grid)
         if winner == self.max_token:
             return 100000
@@ -187,35 +188,29 @@ class Connect4Agent:
         if depth == 0 or is_full(grid):
             return self.evaluate(grid)
 
+        if maximizing:
+            return self.max_value(grid, depth, alpha, beta)
+        else:
+            return self.min_value(grid, depth, alpha, beta)
+
+    def max_value(self, grid, depth, alpha, beta):
         v = -float("inf")
         for col in get_valid_columns(grid):
             child = drop_piece_copy(grid, col, self.max_token)
-            v = max(v, self.min_value(child, depth - 1, alpha, beta))
-
+            v = max(v, self.value(child, depth - 1, alpha, beta, False))
             if v >= beta:
                 return v
             alpha = max(alpha, v)
-
         return v
 
     def min_value(self, grid, depth, alpha, beta):
-        winner = check_win_token(grid)
-        if winner == self.max_token:
-            return 100000
-        if winner == self.min_token:
-            return -100000
-        if depth == 0 or is_full(grid):
-            return self.evaluate(grid)
-
         v = float("inf")
         for col in get_valid_columns(grid):
             child = drop_piece_copy(grid, col, self.min_token)
-            v = min(v, self.max_value(child, depth - 1, alpha, beta))
-
+            v = min(v, self.value(child, depth - 1, alpha, beta, True))
             if v <= alpha:
                 return v
             beta = min(beta, v)
-
         return v
 
     def choose_next_move(self, grid: List[List[str]]) -> int:
